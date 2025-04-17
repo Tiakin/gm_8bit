@@ -7,18 +7,18 @@ on:
 
 jobs:
   build-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v2
     - uses: actions/checkout@v2
       with:
         submodules: recursive
         repository: danielga/garrysmod_common
-        ref: 6b296f722c6d32fac162adf024b6e7d2a278406a
+        ref: x86-64-support-sourcesdk
         path: 'garrysmod_common'
     - name: Install Premake
       run: |
-        wget https://github.com/premake/premake-core/releases/download/v5.0.0-beta2/premake-5.0.0-beta2-linux.tar.gz -O premake.tar.gz
+        wget https://github.com/premake/premake-core/releases/download/v5.0.0-beta5/premake-5.0.0-beta5-linux.tar.gz -O premake.tar.gz
         tar -xvf premake.tar.gz
         chmod +x premake5
         sudo cp premake5 /usr/bin
