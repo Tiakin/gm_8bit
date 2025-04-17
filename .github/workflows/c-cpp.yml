@@ -42,11 +42,10 @@ jobs:
           cd projects/linux/gmake2
           make
       -
-        name: Upload as release asset
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            projects/linux/gmake2/x86/ReleaseWithSymbols/gmsv_eightbit_linux.dll
+       uses: actions/upload-artifact@v4
+       with:
+         name: gmsv_eightbit_linux.dll
+         path: projects/linux/gmake/x86/ReleaseWithSymbols/gmsv_eightbit_linux.dll
   build-windows:
     runs-on: windows-2019
     steps:
