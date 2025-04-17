@@ -17,6 +17,9 @@
 #include <cstdint>
 #include "opus_framedecoder.h"
 
+// Global pointer to the Lua interface
+static GarrysMod::Lua::ILuaBase* g_LUA = nullptr;
+
 #define STEAM_PCKT_SZ sizeof(uint64_t) + sizeof(CRC32_t)
 #ifdef SYSTEM_WINDOWS
 	#include <windows.h>
@@ -79,14 +82,14 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 		uint16_t serverPort = 0;
 
 		// Get server address
-		LUA->PushSpecial(GarrysMod::Lua::SPECIAL_GLOB);
-		LUA->GetField(-1, "game");
-		LUA->GetField(-1, "GetIPAddress");
-		LUA->Call(0, 1);
+		g_LUA->PushSpecial(GarrysMod::Lua::SPECIAL_GLOB);
+		g_LUA->GetField(-1, "game");
+		g_LUA->GetField(-1, "GetIPAddress");
+		g_LUA->Call(0, 1);
 
-		if (LUA->IsType(-1, GarrysMod::Lua::Type::STRING))
+		if (g_LUA->IsType(-1, GarrysMod::Lua::Type::STRING))
 		{
-			const char *ipString = LUA->GetString(-1);
+			const char *ipString = g_LUA->GetString(-1);
 			const char *portStr = strchr(ipString, ':');
 
 			if (portStr)
@@ -103,7 +106,7 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 				}
 			}
 		}
-		LUA->Pop(3); // Pop results and tables
+		g_LUA->Pop(3); // Pop results and tables
 
 		// Copy the assembled data into the buffer
 		constexpr size_t steamIdSize = sizeof(uint64_t);
@@ -238,6 +241,9 @@ LUA_FUNCTION_STATIC(eightbit_enableEffect) {
 
 GMOD_MODULE_OPEN()
 {
+	// Lua interface
+	g_LUA = LUA;
+	
 	g_eightbit = new EightbitState();
 
 	SourceSDK::ModuleLoader engine_loader("engine");
