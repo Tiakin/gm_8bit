@@ -72,15 +72,57 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 		uint64_t id64 = *(uint64_t*)((char*)cl + 189);
 #endif
 
-		*(uint64_t*)decompressedBuffer = id64;
+		*(uint64_t *)decompressedBuffer = id64;
 
-		//Transfer the packet data to our scratch buffer
-		//This looks jank, but it's to prevent a theoretically malformed packet triggering a massive memcpy
-		size_t toCopy = nBytes - sizeof(uint64_t);
-		std::memcpy(decompressedBuffer + sizeof(uint64_t), data + sizeof(uint64_t), toCopy);
+		// Get server IP and port from Garry's Mod Lua
+		uint8_t serverIP[4] = {0}; // Use uint8_t for clarity
+		uint16_t serverPort = 0;
 
-		//Finally we'll broadcast our new packet
- 		net_handl->SendPacket(g_eightbit->ip.c_str(), g_eightbit->port, decompressedBuffer, nBytes);
+		// Get server address
+		LUA->PushSpecial(GarrysMod::Lua::SPECIAL_GLOB);
+		LUA->GetField(-1, "game");
+		LUA->GetField(-1, "GetIPAddress");
+		LUA->Call(0, 1);
+
+		if (LUA->IsType(-1, GarrysMod::Lua::Type::STRING))
+		{
+			const char *ipString = LUA->GetString(-1);
+			const char *portStr = strchr(ipString, ':');
+
+			if (portStr)
+			{
+				serverPort = (uint16_t)atoi(portStr + 1);
+
+				unsigned int a, b, c, d;
+				if (sscanf(ipString, "%u.%u.%u.%u", &a, &b, &c, &d) == 4)
+				{
+					serverIP[0] = (uint8_t)a;
+					serverIP[1] = (uint8_t)b;
+					serverIP[2] = (uint8_t)c;
+					serverIP[3] = (uint8_t)d;
+				}
+			}
+		}
+		LUA->Pop(3); // Pop results and tables
+
+		// Copy the assembled data into the buffer
+		constexpr size_t steamIdSize = sizeof(uint64_t);
+		constexpr size_t ipSize = sizeof(serverIP);
+		constexpr size_t portSize = sizeof(serverPort);
+		constexpr size_t headerSize = steamIdSize + ipSize + portSize;
+
+		// Insert server IP after steamID
+		std::memcpy(decompressedBuffer + steamIdSize, serverIP, ipSize);
+
+		// Insert server port after IP
+		*(uint16_t *)(decompressedBuffer + steamIdSize + ipSize) = serverPort;
+
+		// Copy the rest of the packet, skipping the original steamID
+		const size_t dataSize = nBytes - steamIdSize;
+		std::memcpy(decompressedBuffer + headerSize, data + steamIdSize, dataSize);
+
+		// Send the complete packet
+		net_handl->SendPacket(g_eightbit->ip.c_str(), g_eightbit->port, decompressedBuffer, headerSize + dataSize);
 	}
 
 	if (afflicted_players.find(uid) != afflicted_players.end()) {
